@@ -399,25 +399,7 @@ unsigned round;
 	memcpy (out, state, sizeof(state));
 }*/
 
-/*void Decrypt (uchar *in, uchar *expkey, uchar *out)
-{
-uchar state[Nb * 4];
-unsigned round;
 
-	memcpy (state, in, sizeof(state));
-
-	AddRoundKey ((unsigned *)state, (unsigned *)expkey + Nr * Nb);
-	InvShiftRows(state);
-
-	for( round = Nr; round--; )
-	{
-		AddRoundKey ((unsigned *)state, (unsigned *)expkey + round * Nb);
-		if( round )
-			InvMixSubColumns (state);
-	} 
-
-	memcpy (out, state, sizeof(state));
-}*/
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -457,26 +439,23 @@ inline unsigned long int monotonicTime(void)
 }
 
 
-/*void decrypt (char *mykey, char *name)
+__global__ void gpuDecrypt (uchar *in, uchar *expkey, uchar *out, int idx)
 {
-	uchar expkey[4 * Nb * (Nr + 1)];
-	FILE *fd = fopen (name, "rb");
-	int ch, idx = 0;
-	strncpy ((char *) key, mykey, sizeof(key));
-	ExpandKey (key, expkey);
-
-	while( ch = getc(fd), ch != EOF ) {
-		in[idx++] = ch;
-		if( idx % 16 )
-			continue;
-
-		Decrypt (in, expkey, out);
-
-		for( idx = 0; idx < 16; idx++ )
-			putchar (out[idx]);
-		idx = 0;
+	uchar state[Nb * 4];
+	for(int i = 16*threadIdx.x+ 16*blockIdx.x*blockDim.x; i < idx; i += 16*blockDim.x*gridDim.x)
+	{
+		memcpy (state, &in[i], sizeof(state));
+		AddRoundKey ((unsigned *)state, (unsigned *)expkey + Nr * Nb);
+		InvShiftRows(state);
+		for( unsigned round = Nr; round--; )
+		{
+			AddRoundKey ((unsigned *)state, (unsigned *)expkey + round * Nb);
+			if( round )
+				InvMixSubColumns (state);
+		} 
+		memcpy (&out[i], state, sizeof(state));
 	}
-}*/
+}
 __global__ void gpuEncrypt(uchar* in, uchar* expkey, uchar *out, int idx)
 {
 	uchar state[4 * Nb];	 // array of 16
@@ -541,6 +520,45 @@ void encrypt (char *mykey, char *name)
 		putchar(out[i]);
 }
 
+void decrypt (char *mykey, char *name)
+{
+	uchar expkey[4 * Nb * (Nr + 1)];
+	FILE *fd = fopen (name, "rb");
+	int ch, idx = 0;
+	strncpy ((char *)key, mykey, sizeof(key));
+	ExpandKey (key, expkey); 
+	while( ch = getc(fd), ch != EOF ) // insert all cha into in[] arr 
+	{
+		if(idx == BUF_SIZE)
+		{
+		   cout <<"File is Too Big!"<<endl;
+		   exit(0);
+		}		
+		in[idx++] = ch;
+	}
+	if(idx > 0 )
+	  while(idx % 16 != 0)
+		in[idx++] = 0;
+	else
+	  return;	uchar* gpuIn;
+	uchar* gpuExpkey;
+	uchar* gpuOut;
+	cudaMalloc(&gpuIn, BUF_SIZE*sizeof(uchar)); 	cudaMalloc(&gpuOut, BUF_SIZE*sizeof(uchar));
+	cudaMalloc(&gpuExpkey, 4 * Nb * (Nr + 1)*sizeof(uchar));
+	//copy data from host to device
+
+	cudaMemcpy(gpuIn, in,  BUF_SIZE*sizeof(uchar), cudaMemcpyHostToDevice);
+	cudaMemcpy(gpuExpkey, expkey,  4 * Nb * (Nr + 1)*sizeof(uchar), cudaMemcpyHostToDevice);
+	// Cuda running
+	gpuDecrypt<<<14,256>>>(gpuIn, gpuExpkey, gpuOut, idx);
+
+	// copy to out from device to host
+	cudaMemcpy(out, gpuOut, BUF_SIZE * sizeof(uchar) , cudaMemcpyDeviceToHost); 
+
+	for(int i = 0; i < idx; i++)
+		putchar(out[i]);
+	
+}
 uchar expkey[4 * Nb * (Nr + 1)];
 void mrandom (int, char *);
 unsigned xrandom (void);
@@ -591,7 +609,7 @@ extern int __cdecl _setmode (int, int);
 	switch( argv[1][0] ) {
 	//case 'c': certify(); break;
 	case 'e': encrypt(argv[2], argv[3]); break;
-	//case 'd': decrypt(argv[2], argv[3]); break;;
+	case 'd': decrypt(argv[2], argv[3]); break;;
 	//case 's': sample(); break;
 	}
 }
