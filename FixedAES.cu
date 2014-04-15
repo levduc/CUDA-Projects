@@ -448,40 +448,14 @@ unsigned long long dwBoth;
 }
 #endif
 
-
-/*void certify ()
+inline unsigned long int monotonicTime(void)
 {
-uchar expkey[4 * Nb * (Nr + 1)];
-unsigned idx, diff;
-__int64 start, stop;
+  const unsigned long int NS_PER_SEC = 1000 * 1000 * 1000;
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return now.tv_sec * NS_PER_SEC + now.tv_nsec;
+}
 
-	ExpandKey (key, expkey);
-	Encrypt (in, expkey, out);
-
-	rd_clock(&start);
-
-	Encrypt (in, expkey, out);
-
-	rd_clock(&stop);
-	diff = stop - start;
-	printf ("encrypt time: %d, %d cycles per byte\n", diff, diff/16);
-
-	for( idx = 0; idx < 16; idx++ )
-		printf ("%.2x ", out[idx]);
-
-	printf ("\n");
-	Decrypt (out, expkey, in);
-	rd_clock(&start);
-	Decrypt (out, expkey, in);
-
-	rd_clock(&stop);
-	diff = stop - start;
-	printf ("decrypt time: %d, %d cycles per byte\n", diff, diff/16);
-
-	for( idx = 0; idx < 16; idx++ )
-		printf ("%.2x ", in[idx]);
-	printf ("\n");
-}*/
 
 /*void decrypt (char *mykey, char *name)
 {
@@ -506,22 +480,23 @@ __int64 start, stop;
 __global__ void gpuEncrypt(uchar* in, uchar* expkey, uchar *out, int idx)
 {
 	uchar state[4 * Nb];	 // array of 16
-	//unsigned round;
-	//printf("testing gpuIn %d", Nb);
 	//memcpy (state, in, Nb * 4);
-	for(int i = 0; i < idx; i += 16)
+	//int numOfBlockKey = idx/16;
+	//threadIdx.x*16
+	for(int i = 16*threadIdx.x+ 16*blockIdx.x*blockDim.x; i < idx; i += 16*blockDim.x*gridDim.x)
 	{				
 		//printf("testing gpuIn %d", in[i]);		
-		memcpy (state, &in[i], Nb * 4);
+		memcpy (state, &in[i], Nb * 4); //threadIdx.x*16+ 16*blockIdx.x*blockDim.x; 16 is number of data that each thread handles
 		AddRoundKey ((unsigned *)state, (unsigned *)expkey);
-		for( unsigned round = 1; round < Nr + 1; round++ ) {
+		for( unsigned round = 1; round < Nr + 1; round++ ) 
+		{
 			if( round < Nr )
 				MixSubColumns (state);
 			else
 				ShiftRows (state);
 			AddRoundKey ((unsigned *)state, (unsigned *)expkey + round * Nb);
 		}
-		memcpy (&out[i], state, sizeof(state));
+		memcpy (&out[i], state, sizeof(state)); //16*blockIdx.x*blockDim.x+threadIdx.x*16
 	}
 	//printf("testing gpuOut %d", out[0]);
 }
@@ -557,7 +532,7 @@ void encrypt (char *mykey, char *name)
 	cudaMemcpy(gpuIn, in,  BUF_SIZE*sizeof(uchar), cudaMemcpyHostToDevice);
 	cudaMemcpy(gpuExpkey, expkey,  4 * Nb * (Nr + 1)*sizeof(uchar), cudaMemcpyHostToDevice);
 	// Cuda running
-	gpuEncrypt<<<1,1>>>(gpuIn, gpuExpkey, gpuOut, idx);
+	gpuEncrypt<<<14,256>>>(gpuIn, gpuExpkey, gpuOut, idx);
 
 	// copy to out from device to host
 	cudaMemcpy(out, gpuOut, BUF_SIZE * sizeof(uchar) , cudaMemcpyDeviceToHost); 
