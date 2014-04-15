@@ -18,14 +18,23 @@ typedef unsigned char uchar;
 #include <string.h>
 #include <memory.h>
 #include <iostream>
+#include <time.h>
 using namespace std;
-
+#define NS_PER_SEC (1000*1000*1000)
 // AES only supports Nb=4
 #define Nb 4			// number of columns in the state & expanded key
-
 #define Nk 4			// number of columns in a key
 #define Nr 10			// number of rounds in encryption
 const size_t BUF_SIZE = 1000000000;
+
+inline unsigned long int monotonicTime(void)
+{
+  //const unsigned long int NS_PER_SEC = 1000 * 1000 * 1000;
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return now.tv_sec * NS_PER_SEC + now.tv_nsec;
+}
+
 
 __device__ uchar Sbox[256] = {		// forward s-box
 0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -430,14 +439,6 @@ unsigned long long dwBoth;
 }
 #endif
 
-inline unsigned long int monotonicTime(void)
-{
-  const unsigned long int NS_PER_SEC = 1000 * 1000 * 1000;
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_sec * NS_PER_SEC + now.tv_nsec;
-}
-
 
 __global__ void gpuDecrypt (uchar *in, uchar *expkey, uchar *out, int idx)
 {
@@ -479,6 +480,16 @@ __global__ void gpuEncrypt(uchar* in, uchar* expkey, uchar *out, int idx)
 	}
 	//printf("testing gpuOut %d", out[0]);
 }
+int getSMs()
+{
+	int numSMs;
+	if (cudaSuccess != cudaDeviceGetAttribute(&numSMs, cudaDevAttrMultiProcessorCount, 0))
+	{
+		cout << "Can't get number of SMs!" << endl;
+		return 1;
+	}
+	return numSMs;
+}
 void encrypt (char *mykey, char *name)
 {
 	uchar expkey[4 * Nb * (Nr + 1)];
@@ -504,6 +515,7 @@ void encrypt (char *mykey, char *name)
 	uchar* gpuIn;
 	uchar* gpuExpkey;
 	uchar* gpuOut;
+	int numSMs = getSMs();
 	cudaMalloc(&gpuIn, BUF_SIZE*sizeof(uchar)); 	cudaMalloc(&gpuOut, BUF_SIZE*sizeof(uchar));
 	cudaMalloc(&gpuExpkey, 4 * Nb * (Nr + 1)*sizeof(uchar));
 	//copy data from host to device
@@ -511,13 +523,14 @@ void encrypt (char *mykey, char *name)
 	cudaMemcpy(gpuIn, in,  BUF_SIZE*sizeof(uchar), cudaMemcpyHostToDevice);
 	cudaMemcpy(gpuExpkey, expkey,  4 * Nb * (Nr + 1)*sizeof(uchar), cudaMemcpyHostToDevice);
 	// Cuda running
-	gpuEncrypt<<<14,256>>>(gpuIn, gpuExpkey, gpuOut, idx);
+	gpuEncrypt<<<numSMs,256>>>(gpuIn, gpuExpkey, gpuOut, idx);
 
 	// copy to out from device to host
 	cudaMemcpy(out, gpuOut, BUF_SIZE * sizeof(uchar) , cudaMemcpyDeviceToHost); 
 
 	for(int i = 0; i < idx; i++)
 		putchar(out[i]);
+	
 }
 
 void decrypt (char *mykey, char *name)
@@ -605,13 +618,16 @@ extern int __cdecl _setmode (int, int);
 
 	_setmode (_fileno(stdout), _O_BINARY);
 #endif
-
+	unsigned long int gpuTime = monotonicTime();
 	switch( argv[1][0] ) {
 	//case 'c': certify(); break;
 	case 'e': encrypt(argv[2], argv[3]); break;
 	case 'd': decrypt(argv[2], argv[3]); break;;
 	//case 's': sample(); break;
 	}
+	gpuTime = monotonicTime() - gpuTime;  
+	fprintf(stderr, "Time to perform operation on GPU = %ld ns\n", gpuTime);
+	//cout <<   << endl;
 }
 
 /*
