@@ -14,8 +14,6 @@ int base13[3][13];
 int base14[3][14];
 int board7[7][7];
 int board8[8][8];
-
-
 void loadData()
 {
  //base 3*4
@@ -160,57 +158,6 @@ void loadData()
                base14[x][y] = base7[x][y-7]+3*7;         
      	}
     }
-    // load board 7
-   	board7[0][0] = 1;
-	board7[0][1] = 26;
-	board7[0][2] = 11;
-	board7[0][3] = 46;
-	board7[0][4] = 29;
-	board7[0][5] = 24;
-	board7[0][6] = 9;
-	board7[1][0] = 12;
-	board7[1][1] = 45;
-	board7[1][2] = 28;
-	board7[1][3] = 25;
-	board7[1][4] = 10;
-	board7[1][5] = 47;
-	board7[1][6] = 30;
-	board7[2][0] = 27;
-	board7[2][1] = 2;
-	board7[2][2] = 35;
-	board7[2][3] = 44;
-	board7[2][4] = 49;
-	board7[2][5] = 8;
-	board7[2][6] = 23;
-	board7[3][0] = 40;
-	board7[3][1] = 13;
-	board7[3][2] = 42;
-	board7[3][3] = 19;
-	board7[3][4] = 36;
-	board7[3][5] = 31;
-	board7[3][6] = 48;
-	board7[4][0] = 3;
-	board7[4][1] = 16;
-	board7[4][2] = 39;
-	board7[4][3] = 34;
-	board7[4][4] = 43;
-	board7[4][5] = 22;
-	board7[4][6] = 7;
-	board7[5][0] = 14;
-	board7[5][1] = 41;
-	board7[5][2] = 18;
-	board7[5][3] = 5;
-	board7[5][4] = 20;
-	board7[5][5] = 37;
-	board7[5][6] = 32;
-	board7[6][0] = 17;
-	board7[6][1] = 4;
-	board7[6][2] = 15;
-	board7[6][3] = 38;
-	board7[6][4] = 33;
-	board7[6][5] = 6;
-	board7[6][6] = 21;
-
 }
 
 int blockOfFour(int n) // getting num blocks of four in each stripe.
@@ -369,70 +316,35 @@ void solveBoard(int n)
 		    }// end of else
 	       }// end of for y   
 	   }// end of big 4
-	   //Handling 7*3(k-1) here 2 case 
-	   if(n%2 != 0)
+	   //Handling 7*n here
+	   for(int x = 0; x < 7; x++)
 	   {
-		   for(int x = 0; x < 7; x++)
-		   {
-			for(int y = 0; y < n-7 ; y++) // NOTE !!!!
-			{
-			    if(y%6 == 0) //0,6,12....
-			    {
-				int temp = y/6;
-			    	board[n+x-7][y] = tranposeBase7[x][y%3]+ 2*temp*21 + (n-7)*n; // minus 7 because we want to start at line n-7
-				board[n+x-7][y+1] = tranposeBase7[x][y%3+1]+ 2*temp*21 + (n-7)*n;
-				board[n+x-7][y+2] = tranposeBase7[x][y%3+2]+ 2*temp*21 + (n-7)*n;
-			    }
-			    else if( y%3 == 0) //3,9,15,21...
-			    {
-				int temp = y/6;
-			    	board[n-x-1][y] = tranposeBase7[x][y%3]+ 21 + 2*temp*21 + (n-7)*n;
-				board[n-x-1][y+1] = tranposeBase7[x][y%3+1]+ 21 + 2*temp*21+ (n-7)*n;
-				board[n-x-1][y+2] = tranposeBase7[x][y%3+2]+ 21 + 2*temp*21+ (n-7)*n;
-			    }
-			}
-		   }
-		   //handling 7*7 chessboard here
-		   for(int x = 0; x < 7; x++)
-		   {
-			for(int y = 0; y < 7 ; y++)
-			{
-			    board[n+x-7][n+y-7] = board7[x][y] + (n*n-49);
-			}
-		   }
-           }else
+		for(int y = 0; y < n-7 ; y++) // NOTE !!!!
 		{
-		for(int x = 0; x < 7; x++)
-		   {
-			for(int y = n; y > 7 ; y--) // NOTE !!!!
-			{
-			    if((n-y)%6 == 0) // n-y because we start from ending
-			    {
-				int temp = (n-y)/6;
-			    	board[n+x-7][y-1] = tranposeBase7[x][(n-y)%3] + 2*temp*21 + (n-7)*n;
-				board[n+x-7][y-2] = tranposeBase7[x][(n-y)%3+1] + 2*temp*21 + (n-7)*n; //+ 2*temp*21 + (n-7)*n
-				board[n+x-7][y-3] = tranposeBase7[x][(n-y)%3+2] + 2*temp*21 + (n-7)*n; 
-			    }
-			    else if((n-y)%3 == 0) // n-y because we start from ending
-			    {
-				int temp = (n-y)/6;
-			    	board[n-x-1][y-1] = tranposeBase7[x][(n-y)%3] + 21 +  2*temp*21 + (n-7)*n;
-				board[n-x-1][y-2] = tranposeBase7[x][(n-y)%3+1]+ 21 + 2*temp*21 + (n-7)*n;
-				board[n-x-1][y-3] = tranposeBase7[x][(n-y)%3+2]+ 21 + 2*temp*21 + (n-7)*n;
-			    }
-			}
-		   }
-		   //handling 7*7 chessboard here
-		   for(int x = 0; x < 7; x++)
-		   {
-			for(int y = 6; y >=0 ; y--)
-			{
-			    board[n+x-7][y] = board7[x][6-y] + (n*n-49);
-			}
-		   }
-	   }// end of else
-
-	  
+		    if(y%6 == 0) //0,6,12....
+		    {
+			int temp = y/6;
+		    	board[n+x-7][y] = tranposeBase7[x][y%3]+ 2*temp*21;
+			board[n+x-7][y+1] = tranposeBase7[x][y%3+1]+ 2*temp*21;
+			board[n+x-7][y+2] = tranposeBase7[x][y%3+2]+ 2*temp*21;
+		    }
+		    else if( y%3 == 0) //3,9,15,21...
+		    {
+			int temp = y/6;
+		    	board[n-x-1][y] = tranposeBase7[x][y%3]+ 21 + 2*temp*21;
+			board[n-x-1][y+1] = tranposeBase7[x][y%3+1]+ 21 + 2*temp*21;
+			board[n-x-1][y+2] = tranposeBase7[x][y%3+2]+ 21 + 2*temp*21;
+		    }
+		    /*int temp = y/3; // getting index of block of 7*3
+		    for(int i = 0; i < n-7; i+= 3) // 
+			{  
+			    int stride = i/3; 	    	
+			    board[n+x-7][y] = tranposeBase7[x][y%3] + temp*21 + 3*n*stride;
+			    if(x+3+i < n-7)
+			    	board[x+3+i][n-y-1] = base[x][y%4]+ temp*12 + 3*n*(stride+1);
+			}*/
+		}
+	   }
 	
 	break;
       case 2:
@@ -485,12 +397,11 @@ void solveBoard(int n)
 	       }// end of for y   
 	   }// end of big 4
 	// Handling 8*n stride here
+	
+
 
     } // end of switch
-
-
-    // print out the thingy
-    for (int x = n; x >= 0; x--) {
+    for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)
             cout << board[x][y]<< "\t";
         cout << endl;
@@ -510,12 +421,12 @@ int main()
 	for(int y = 0; y < 7 ; y++)
 	    	cout << base7[x][y] << "\t";                
 	cout << endl;
-    }*/
+    }
     for(int x = 0; x < 7; x++)
     {
 	for(int y = 0; y < 3 ; y++)
 	    	cout << tranposeBase7[x][y] << "\t";   
 	cout << endl;             
-    }
+    }*/
     return 0;
 }
