@@ -2,10 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <algorithm>
-#include <stdio.h>
-#include <fcntl.h>
-#include <time.h>
-#define NS_PER_SEC (1000*1000*1000)
 using namespace std;
 
 int base[12];
@@ -15,29 +11,20 @@ int base11[33];
 int base12[36];
 int base13[39];
 int base14[42];
-
-inline unsigned long int monotonicTime(void)
-{
-  //const unsigned long int NS_PER_SEC = 1000 * 1000 * 1000;
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_sec * NS_PER_SEC + now.tv_nsec;
-}
-
 void loadData()
 {
  //base 3*4
 	base[0]=1;
-	base[3]=4;
-	base[6]=7;
-	base[9]=10;
-	base[1]=8;
-	base[4]=11;
-	base[7]=2;
-	base[10]=5;
-	base[2]=3;
-	base[5]=6;
-	base[8]=9;
+	base[1]=4;
+	base[2]=7;
+	base[3]=10;
+	base[4]=8;
+	base[5]=11;
+	base[6]=2;
+	base[7]=5;
+	base[8]=3;
+	base[9]=6;
+	base[10]=9;
 	base[11]=12;
 
     //base 3*7
@@ -153,33 +140,6 @@ void loadData()
     }
 }
 
-int blockOfFour(int n) // getting num blocks of four in each stripe.
-{
-    if(n < 11)
-    {
-	return 0;
-    }
-    else
-    {
-        int num = 0;
-        switch(n%4)
-        {
-	    case 0:
-	       num = (n-8);
-	       break;
-	    case 1:
-	       num = (n-13);
-	       break;
-	    case 2:
-	       num = (n-14);
-	       break;
-	    case 3:
-	       num = (n-7);
-	       break;
-        }
-	return num;
-    }		
-}
 __device__ int gpuBlockOfFour(int n)
 {
     if(n < 11)
@@ -210,9 +170,9 @@ __device__ int gpuBlockOfFour(int n)
 
 __global__ void solveBoard(int* base, int* base7, int* base8, int* base11, int* base12, int* base13, int* base14, int* board, int n)
 {
-    /*for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++)
        for (int j = 0; j < n; j++)
-            board[i+j*n] = 0;*/
+            board[i+j*n] = 0;
     switch(n % 3)
     {	
 	case 0: // for all board size that is divisibe by 3
@@ -225,48 +185,41 @@ __global__ void solveBoard(int* base, int* base7, int* base8, int* base11, int* 
 		    if(y < gpuBlockOfFour(n))
 		    {
 			int temp = y/4;	
-			//for(int i = 0; i < n; i+= 6) // parrallel here if(threadIdx.x%2 == 0) i = threadIdx*6
-			//{
-			if(threadIdx.x % 2 == 0)
+			for(int i = 0; i < n; i+= 6) // parrallel here if(threadIdx.x%2 == 0) i = threadIdx*6
 			{
-			    int i =  threadIdx.x*3;
-			    //int stride = threadIdx.x;			    	
-			    board[(x+i)+n*y] = base[x+(y%4)*3]+ temp*12 + 3*n*threadIdx.x;
+			    int stride = i/3;		    	
+			    board[(x+i)+n*y] = base[x+(y%4)*3]+ temp*12 + 3*n*stride;
 			    if(x+3+i < n)
-			    	board[(x+3+i)+n*(n-y-1)] = base[x+(y%4)*3]+ temp*12 + 3*n*(threadIdx.x+1);
+			    	board[(x+3+i)+n*(n-y-1)] = base[x+(y%4)*3]+ temp*12 + 3*n*(stride+1);
 			}
-			//}
 		    }
 		    else
 		    {
-			//for(int i = 0 ; i < n; i+= 6) // parallel here
-			//{
-			if(threadIdx.x % 2 == 0)
+			for(int i = 0 ; i < n; i+= 6) // parallel here
 			{
-			    int i =  threadIdx.x*3;
-			    //int stride = i/3;
+			    int stride = i/3;
 			    if(n % 4 == 0)
 			    {
-			    	board[(x+i)+n*y] = base8[x+(y-blockOfFour)*3]+BaseOfFour*12 + 3*n*threadIdx.x;
-				board[(x+3+i)+n*(n-y-1)] = base8[x+(y-blockOfFour)*3]+ BaseOfFour*12 + 3*n*(threadIdx.x+1);
+			    	board[(x+i)+n*y] = base8[x+(y-blockOfFour)*3]+BaseOfFour*12 + 3*n*stride;
+				board[(x+3+i)+n*(n-y-1)] = base8[x+(y-blockOfFour)*3]+ BaseOfFour*12 + 3*n*(stride+1);
 			    }
  			    if(n % 4 == 1)
 			    {
-			    	board[(x+i)+n*y] = base13[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*threadIdx.x;
+			    	board[(x+i)+n*y] = base13[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*stride;
 				if(x+3+i < n)
-				   board[(x+3+i)+ n*(n-y-1)] = base13[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(threadIdx.x+1);
+				   board[(x+3+i)+ n*(n-y-1)] = base13[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(stride+1);
 			    }
 			    if(n % 4 == 2)
 			    {
-			    	board[(x+i)+ n*y] = base14[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*threadIdx.x;
+			    	board[(x+i)+ n*y] = base14[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*stride;
 				if(x+3+i < n)
-				   board[(x+3+i)+n*(n-y-1)] = base14[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(threadIdx.x+1);
+				   board[(x+3+i)+n*(n-y-1)] = base14[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(stride+1);
 			    }
 			    if(n % 4 == 3)
 			    {
-			    	board[(x+i)+n*y] = base7[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*threadIdx.x;
+			    	board[(x+i)+n*y] = base7[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*stride;
 				if(x+3+i < n)
-				   board[(x+3+i)+n*(n-y-1)] = base7[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(threadIdx.x+1);
+				   board[(x+3+i)+n*(n-y-1)] = base7[x+(y-blockOfFour)*3]+ BaseOfFour * 12 + 3*n*(stride+1);
 			    }
 			}
 		    }
@@ -289,7 +242,6 @@ int main()
     cout << "Enter size of board:";
     cin >> n;
     int board[n*n];
-    unsigned long int gpuTime = monotonicTime();
     // Declare gpuBase
     int* gpuBase;
     int* gpuBase7;
@@ -312,15 +264,12 @@ int main()
     cudaMemcpy(gpuBase12, base12,  36*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(gpuBase13, base13,  39*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(gpuBase14, base14,  42*sizeof(int), cudaMemcpyHostToDevice);
-    // Calculate threads needed
-    int num_threads = n/3; // we want to handle the last thing in stripe
     // Call kernel
-    solveBoard<<<1,num_threads>>>(gpuBase,gpuBase7,gpuBase8,gpuBase11,gpuBase12,gpuBase13,gpuBase14,gpuBoard,n);
+    //int numThreads = 
+    solveBoard<<<1,1>>>(gpuBase,gpuBase7,gpuBase8,gpuBase11,gpuBase12,gpuBase13,gpuBase14,gpuBoard,n);
     // copy to out from device to host
-    cudaMemcpy(board, gpuBoard, n*n* sizeof(int) , cudaMemcpyDeviceToHost); 
-
-    gpuTime = monotonicTime() - gpuTime;  
-    fprintf(stderr, "Time to perform operation on CPU = %ld ns\n", gpuTime);
+	cudaMemcpy(board, gpuBoard, n*n* sizeof(int) , cudaMemcpyDeviceToHost); 
+    
 
     for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)

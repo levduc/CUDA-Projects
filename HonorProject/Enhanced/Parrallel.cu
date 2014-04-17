@@ -2,12 +2,17 @@
 #include <stdlib.h>
 #include <math.h>
 #include <algorithm>
+#include <stdio.h>
+#include <fcntl.h>
+#include <time.h>
+#define NS_PER_SEC (1000*1000*1000)
 using namespace std;
 
 int base[3][4];
 int base7[3][7];
 int tranposeBase7[7][3];
 int base8[3][8];
+int tranposeBase8[8][3];
 int base11[3][11];
 int base12[3][12];
 int base13[3][13];
@@ -15,6 +20,13 @@ int base14[3][14];
 int board7[7][7];
 int board8[8][8];
 
+inline unsigned long int monotonicTime(void)
+{
+  //const unsigned long int NS_PER_SEC = 1000 * 1000 * 1000;
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return now.tv_sec * NS_PER_SEC + now.tv_nsec;
+}
 
 void loadData()
 {
@@ -87,6 +99,15 @@ void loadData()
 	base8[2][5]=14;
 	base8[2][6]=11;
 	base8[2][7]=8;
+    //Tranpose base 8
+	for(int x = 0; x < 3; x++)
+	  {
+		for(int y = 0; y < 8 ; y++)
+		{
+		    	tranposeBase8[y][x] = base8[x][y];                
+	    	}
+	  }	
+	
     //base 3*11
     for(int x = 0; x < 3; x++)
     {
@@ -210,6 +231,71 @@ void loadData()
 	board7[6][4] = 33;
 	board7[6][5] = 6;
 	board7[6][6] = 21;
+   //Board 8
+	 board8[0][0] = 1;
+	board8[0][1] = 46;
+	board8[0][2] = 15;
+	board8[0][3] = 24;
+	board8[0][4] = 59;
+	board8[0][5] = 28;
+	board8[0][6] = 13;
+	board8[0][7] = 26;
+	board8[1][0] = 16;
+	board8[1][1] = 23;
+	board8[1][2] = 58;
+	board8[1][3] = 51;
+	board8[1][4] = 14;
+	board8[1][5] = 25;
+	board8[1][6] = 64;
+	board8[1][7] = 29;
+	board8[2][0] = 47;
+	board8[2][1] = 2;
+	board8[2][2] = 45;
+	board8[2][3] = 54;
+	board8[2][4] = 63;
+	board8[2][5] = 60;
+	board8[2][6] = 27;
+	board8[2][7] = 12;
+	board8[3][0] = 22;
+	board8[3][1] = 17;
+	board8[3][2] = 52;
+	board8[3][3] = 57;
+	board8[3][4] = 50;
+	board8[3][5] = 55;
+	board8[3][6] = 30;
+	board8[3][7] = 61;
+	board8[4][0] = 3;
+	board8[4][1] = 48;
+	board8[4][2] = 21;
+	board8[4][3] = 44;
+	board8[4][4] = 53;
+	board8[4][5] = 62;
+	board8[4][6] = 11;
+	board8[4][7] = 34;
+	board8[5][0] = 18;
+	board8[5][1] = 39;
+	board8[5][2] = 42;
+	board8[5][3] = 49;
+	board8[5][4] = 56;
+	board8[5][5] = 33;
+	board8[5][6] = 8;
+	board8[5][7] = 31;
+	board8[6][0] = 41;
+	board8[6][1] = 4;
+	board8[6][2] = 37;
+	board8[6][3] = 20;
+	board8[6][4] = 43;
+	board8[6][5] = 6;
+	board8[6][6] = 35;
+	board8[6][7] = 10;
+	board8[7][0] = 38;
+	board8[7][1] = 19;
+	board8[7][2] = 40;
+	board8[7][3] = 5;
+	board8[7][4] = 36;
+	board8[7][5] = 9;
+	board8[7][6] = 32;
+	board8[7][7] = 7;
 
 }
 
@@ -241,25 +327,6 @@ int blockOfFour(int n) // getting num blocks of four in each stripe.
     }		
 }
 
-int** create2DArray(int n) 
-    {
-      int** array2D = 0;
-      //transpose 3x7 to 7*3
-      
-      array2D = new int*[7]; // height is 7
-
-      for (int h = 0; h < 7; h++)
-      {
-            array2D[h] = new int[n-7];
-	    //initialize array
-            for (int w = 0; w < (n-7); w++)
-            {
-                 //if(w < ) 
-		 //array2D[h][w] = w + width * h;
-            }
-      }
-      return array2D;
-}
 
 void solveBoard(int n)
 {
@@ -319,7 +386,7 @@ void solveBoard(int n)
 		    }
 	       }   
 	   }
-	   break;
+	   break; //  end of first case
 	case 1:
 	   for (int x = 0; x < 3; x++)
 	   {
@@ -400,7 +467,7 @@ void solveBoard(int n)
 			    board[n+x-7][n+y-7] = board7[x][y] + (n*n-49);
 			}
 		   }
-           }else
+           } else
 		{
 		for(int x = 0; x < 7; x++)
 		   {
@@ -423,11 +490,12 @@ void solveBoard(int n)
 			}
 		   }
 		   //handling 7*7 chessboard here
-		   for(int x = 0; x < 7; x++)
+		   for(int x = 6; x >= 0; x--)
 		   {
 			for(int y = 6; y >=0 ; y--)
 			{
-			    board[n+x-7][y] = board7[x][6-y] + (n*n-49);
+			    board[n+x-7][y] = board7[6-x][6-y] + (n*n-49);
+			    //cout << "testing" << endl;
 			}
 		   }
 	   }// end of else
@@ -485,16 +553,79 @@ void solveBoard(int n)
 	       }// end of for y   
 	   }// end of big 4
 	// Handling 8*n stride here
-
+	 if(n%2 == 0)
+	   {
+		   for(int x = 0; x < 8; x++)
+		   {
+			for(int y = 0; y < n-8 ; y++) // NOTE !!!!
+			{
+			    if(y%6 == 0) //0,6,12....
+			    {
+				int temp = y/6;
+			    	board[n+x-8][y] = tranposeBase8[x][y%3]+ 2*temp*24 + (n-8)*n; // minus 8 because we want to start at line n-8
+				board[n+x-8][y+1] = tranposeBase8[x][y%3+1]+ 2*temp*24 + (n-8)*n;
+				board[n+x-8][y+2] = tranposeBase8[x][y%3+2]+ 2*temp*24 + (n-8)*n;
+			    }
+			    else if( y%3 == 0) //3,9,15,21...
+			    {
+				int temp = y/6;
+			    	board[n-x-1][y] = tranposeBase8[x][y%3]+ 24 + 2*temp*24 + (n-8)*n;
+				board[n-x-1][y+1] = tranposeBase8[x][y%3+1]+ 24 + 2*temp*24+ (n-8)*n;
+				board[n-x-1][y+2] = tranposeBase8[x][y%3+2]+ 24 + 2*temp*24+ (n-8)*n;
+			    }
+			}
+		   }
+		   //handling 8*8 chessboard here
+		   for(int x = 0; x < 8; x++)
+		   {
+			for(int y = 0; y < 8 ; y++)
+			{
+			    board[n+x-8][n+y-8] = board8[x][y] + (n*n-64);
+			}
+		   }
+           } else
+		{
+		for(int x = 0; x < 8; x++)
+		   {
+			for(int y = n; y > 8 ; y--) // NOTE !!!!
+			{
+			    if((n-y)%6 == 0) // n-y because we start from ending
+			    {
+				int temp = (n-y)/6; // getting index of block 8*3
+			    	board[n+x-8][y-1] = tranposeBase8[x][(n-y)%3] + 2*temp*24 + (n-8)*n;
+				board[n+x-8][y-2] = tranposeBase8[x][(n-y)%3+1] + 2*temp*24 + (n-8)*n;
+				board[n+x-8][y-3] = tranposeBase8[x][(n-y)%3+2] + 2*temp*24 + (n-8)*n; 
+			    }
+			    else if((n-y)%3 == 0) // n-y because we start from ending
+			    {
+				int temp = (n-y)/6; // getting index of block 8*3
+			    	board[n-x-1][y-1] = tranposeBase8[x][(n-y)%3] + 24 +  2*temp*24 + (n-8)*n; // note 24 = 3*8 
+				board[n-x-1][y-2] = tranposeBase8[x][(n-y)%3+1]+ 24 + 2*temp*24 + (n-8)*n;
+				board[n-x-1][y-3] = tranposeBase8[x][(n-y)%3+2]+ 24 + 2*temp*24 + (n-8)*n;
+			    }
+			}
+		   }
+		   //handling 7*7 chessboard here
+		   for(int x = 7; x >= 0; x--)
+		   {
+			for(int y = 7; y >=0 ; y--)
+			{
+			    board[n+x-7][y] = board8[7-x][7-y] + (n*n-64);
+			    //cout << "testing" << endl;
+			}
+		   }
+	   }// end of else
     } // end of switch
 
 
     // print out the thingy
-    for (int x = n; x >= 0; x--) {
+    
+    /*for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)
             cout << board[x][y]<< "\t";
         cout << endl;
-    }
+    }*/
+    
 }
 
 int main()
@@ -503,19 +634,21 @@ int main()
     int n;
     cout << "Enter size of board:";
     cin >> n;
+    unsigned long int cpuTime = monotonicTime();
     solveBoard(n);
-
+    cpuTime = monotonicTime() - cpuTime;  
+    fprintf(stderr, "Time to perform operation on CPU = %ld ns\n", cpuTime);
     /*for(int x = 0; x < 3; x++)
     {
-	for(int y = 0; y < 7 ; y++)
-	    	cout << base7[x][y] << "\t";                
+	for(int y = 0; y < 8 ; y++)
+	    	cout << base8[x][y] << "\t";                
 	cout << endl;
-    }*/
-    for(int x = 0; x < 7; x++)
+    }
+    for(int x = 0; x < 8; x++)
     {
 	for(int y = 0; y < 3 ; y++)
-	    	cout << tranposeBase7[x][y] << "\t";   
+	    	cout << tranposeBase8[x][y] << "\t";   
 	cout << endl;             
-    }
+    }*/
     return 0;
 }

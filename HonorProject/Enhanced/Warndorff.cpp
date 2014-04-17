@@ -3,7 +3,7 @@
 #include <math.h>
 #include <algorithm>
 using namespace std;
-const int n = 7;
+const int n = 8;
 int board[n][n];
 pair<int, int> knightMove[8];
 int xMove[8] = {2,1,-1,-2,-2,-1,1,2};
@@ -18,7 +18,7 @@ void returnMoves()
 {
     for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)
-            cout <<"board7["<< x << "][" << y <<"] = " << board[x][y]<< ";" << endl;
+            cout <<"board8["<< x << "][" << y <<"] = " << board[x][y]<< ";" << endl;
         //cout << endl;
     }
 }
