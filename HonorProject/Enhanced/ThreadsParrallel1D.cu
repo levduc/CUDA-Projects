@@ -208,9 +208,11 @@ __device__ int gpuBlockOfFour(int n)
     }		
 }
 
-__global__ void solveBoard(int* base, int* base7, int* base8, int* base11, int* base12, int* base13, int* base14, int* board, int* runTime, int n)
+__global__ void solveBoard(int* base, int* base7, int* base8, int* base11, int* base12, int* base13, int* base14, int* board, int n)
 {
-    clock_t start_time = clock();
+    /*for (int i = 0; i < n; i++)
+       for (int j = 0; j < n; j++)
+            board[i+j*n] = 0;*/
     switch(n % 3)
     {	
 	case 0: // for all board size that is divisibe by 3
@@ -272,8 +274,7 @@ __global__ void solveBoard(int* base, int* base7, int* base8, int* base11, int* 
 	   }
 	   break; 
     }
-    clock_t stop_time = clock();
-    runTime[threadIdx.x] =(int) (stop_time - start_time);
+
     /*for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)
             cout << board[x+n*y]<< "\t";
@@ -288,7 +289,6 @@ int main()
     cout << "Enter size of board:";
     cin >> n;
     int board[n*n];
-    int Time[n/3];
     unsigned long int gpuTime = monotonicTime();
     // Declare gpuBase
     int* gpuBase;
@@ -299,13 +299,11 @@ int main()
     int* gpuBase13;
     int* gpuBase14;
     int* gpuBoard;
-    int* runTime;
     //Allocate
     cudaMalloc(&gpuBase, 12*sizeof(int));     cudaMalloc(&gpuBase7, 21*sizeof(int));
     cudaMalloc(&gpuBase8, 24*sizeof(int));     cudaMalloc(&gpuBase11, 33*sizeof(int));
     cudaMalloc(&gpuBase12, 36*sizeof(int));     cudaMalloc(&gpuBase13, 39*sizeof(int));
-    cudaMalloc(&gpuBase14, 42*sizeof(int));     cudaMalloc(&gpuBoard, n*n*sizeof(int));
-    cudaMalloc(&runTime, n*sizeof(int)); //  getting runTime 
+    cudaMalloc(&gpuBase14, 42*sizeof(int));     cudaMalloc(&gpuBoard, n*n*sizeof(int)); 
     //Copy data
     cudaMemcpy(gpuBase, base,  12*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(gpuBase7, base7,  21*sizeof(int), cudaMemcpyHostToDevice);
@@ -317,14 +315,14 @@ int main()
     // Calculate threads needed
     int num_threads = n/3; // we want to handle the last thing in stripe
     // Call kernel
-    solveBoard<<<1,num_threads>>>(gpuBase,gpuBase7,gpuBase8,gpuBase11,gpuBase12,gpuBase13,gpuBase14,gpuBoard,runTime, n);
+    solveBoard<<<1,num_threads>>>(gpuBase,gpuBase7,gpuBase8,gpuBase11,gpuBase12,gpuBase13,gpuBase14,gpuBoard,n);
     // copy to out from device to host
     cudaMemcpy(board, gpuBoard, n*n* sizeof(int) , cudaMemcpyDeviceToHost); 
-    cudaMemcpy(Time, runTime, (n/3)* sizeof(int) , cudaMemcpyDeviceToHost); 	
-    gpuTime = monotonicTime() - gpuTime;  
-    fprintf(stderr, "Time to perform operation on CPU = %ld ns\n", Time[n/3-1]);
 
-    /*for (int x = 0; x < n; x++) {
+    gpuTime = monotonicTime() - gpuTime;  
+    fprintf(stderr, "Time to perform operation on CPU = %ld ns\n", gpuTime);
+
+    for (int x = 0; x < n; x++) {
         for (int y = 0; y < n; y++)
             cout << board[x+n*y]<< "\t";
         cout << endl;
